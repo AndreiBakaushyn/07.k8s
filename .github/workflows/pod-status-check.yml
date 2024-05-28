@@ -1,0 +1,48 @@
+name: Pod Status Check
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Запуск каждые 30 минут
+  workflow_dispatch:
+
+jobs:
+  check_pods:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v1
+        with:
+          version: 'v1.21.0'  # Проверить, что версия соответствует  kubectl
+
+      - name: Get Pod Status
+        run: kubectl get pods --all-namespaces -o json > pod_status.json
+
+      - name: Check for Failed Pods
+        id: check_failed
+        run: |
+          if jq '.items[] | select(.status.phase=="Failed" or .status.phase=="CrashLoopBackOff")' pod_status.json | grep -q 'name'; then
+            echo "::set-output name=failed::true"
+          else
+            echo "::set-output name=failed::false"
+          fi
+
+      - name: Send Slack Notification
+        if: steps.check_failed.outputs.failed == 'true'
+        uses: slackapi/slack-github-action@v1.18.0
+        with:
+          payload: |
+            {
+              "channel": "#your-slack-channel",
+              "attachments": [
+                {
+                  "color": "#ff0000",
+                  "text": "There are crashed/failed pods in the cluster!"
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

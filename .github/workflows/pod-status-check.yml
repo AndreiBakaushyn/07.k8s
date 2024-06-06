@@ -141,23 +141,3 @@ jobs:
               script: | 
                echo "Checking cluster role bindings"
                kubectl get clusterrolebindings
-      - name: Connect to server and check cluster status
-        uses: appleboy/ssh-action@master
-        with:
-              host: ${{ secrets.SERVER_HOST }}
-              username: ${{ secrets.SERVER_USERNAME }}
-              password: ${{ secrets.SERVER_PASSWORD }}
-              port: ${{ secrets.SERVER_PORT }}
-              script: | 
-               echo "Checking nodes resource usage"
-               kubectl top nodes
-      - name: Connect to server and check cluster status
-        uses: appleboy/ssh-action@master
-        with:
-              host: ${{ secrets.SERVER_HOST }}
-              username: ${{ secrets.SERVER_USERNAME }}
-              password: ${{ secrets.SERVER_PASSWORD }}
-              port: ${{ secrets.SERVER_PORT }}
-              script: | 
-                echo "Checking pods resource usage in all namespaces"
-                kubectl top pods --all-namespaces

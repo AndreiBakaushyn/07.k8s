@@ -10,9 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
+        
       - name: Connect to server and check cluster status
         uses: appleboy/ssh-action@master
         with:

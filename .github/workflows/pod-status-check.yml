@@ -2,7 +2,7 @@ name: Pod Status Check
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Запуск каждые 30 минут
+    - cron: '0 0 * * 0'  # Run every Sunday at midnight
   workflow_dispatch:
 
 jobs:
@@ -13,36 +13,55 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v1
+      - name: Connect to server and check cluster status
+        uses: appleboy/ssh-action@master
         with:
-          version: 'v1.21.0'  # Проверить, что версия соответствует  kubectl
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            echo "Checking Kubernetes nodes status"
+            kubectl get nodes
 
-      - name: Get Pod Status
-        run: kubectl get pods --all-namespaces -o json > pod_status.json
+            echo "Checking all pods in all namespaces"
+            kubectl get pods --all-namespaces
 
-      - name: Check for Failed Pods
-        id: check_failed
-        run: |
-          if jq '.items[] | select(.status.phase=="Failed" or .status.phase=="CrashLoopBackOff")' pod_status.json | grep -q 'name'; then
-            echo "::set-output name=failed::true"
-          else
-            echo "::set-output name=failed::false"
-          fi
+            echo "Checking services in all namespaces"
+            kubectl get services --all-namespaces
 
-      - name: Send Slack Notification
-        if: steps.check_failed.outputs.failed == 'true'
-        uses: slackapi/slack-github-action@v1.18.0
-        with:
-          payload: |
-            {
-              "channel": "#your-slack-channel",
-              "attachments": [
-                {
-                  "color": "#ff0000",
-                  "text": "There are crashed/failed pods in the cluster!"
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+            echo "Checking deployments in all namespaces"
+            kubectl get deployments --all-namespaces
+
+            echo "Checking daemonsets in all namespaces"
+            kubectl get daemonsets --all-namespaces
+
+            echo "Checking statefulsets in all namespaces"
+            kubectl get statefulsets --all-namespaces
+
+            echo "Checking persistent volume claims in all namespaces"
+            kubectl get pvc --all-namespaces
+
+            echo "Checking persistent volumes"
+            kubectl get pv
+
+            echo "Checking events in all namespaces"
+            kubectl get events --all-namespaces --sort-by='.metadata.creationTimestamp'
+
+            echo "Checking configmaps in all namespaces"
+            kubectl get configmaps --all-namespaces
+
+            echo "Checking secrets in all namespaces"
+            kubectl get secrets --all-namespaces
+
+            echo "Checking cluster roles"
+            kubectl get clusterroles
+
+            echo "Checking cluster role bindings"
+            kubectl get clusterrolebindings
+
+            echo "Checking nodes resource usage"
+            kubectl top nodes
+
+            echo "Checking pods resource usage in all namespaces"
+            kubectl top pods --all-namespaces
